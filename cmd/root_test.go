@@ -48,9 +48,15 @@ func TestExecute(t *testing.T) {
 			},
 		},
 		{
-			name:   "help flag lists version",
+			name:   "help flag lists version and plan",
 			args:   []string{"--help"},
-			wantIn: []string{"Available Commands:", "version"},
+			wantIn: []string{"Available Commands:", "version", "plan"},
+		},
+		{
+			name:    "plan without recipe errors",
+			args:    []string{"plan"},
+			wantErr: true,
+			errIn:   "required flag(s) \"recipe\" not set",
 		},
 		{
 			name:    "unknown command errors",

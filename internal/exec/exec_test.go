@@ -140,3 +140,95 @@ func TestInitBare(t *testing.T) {
 		t.Errorf("re-init: %v", err)
 	}
 }
+
+func TestUpdateRefCASAndListDelete(t *testing.T) {
+	ctx := context.Background()
+	src := testrepo.New(t)
+	c1 := src.Commit(testrepo.Commit{Label: "c1", Message: "one\n",
+		Name: "A", Email: "a@x", Files: map[string]string{"f": "1\n"}})
+	src.Commit(testrepo.Commit{Label: "c2", Message: "two\n",
+		Name: "A", Email: "a@x", Files: map[string]string{"g": "2\n"}})
+	src.Branch("main", "c2")
+
+	// Create with ZeroSHA CAS: succeeds once, fails the second time.
+	if err := gitexec.UpdateRef(ctx, src.Dir, "refs/heads/x", src.SHA("c2"), gitexec.ZeroSHA, "create"); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	if err := gitexec.UpdateRef(ctx, src.Dir, "refs/heads/x", src.SHA("c1"), gitexec.ZeroSHA, "recreate"); err == nil {
+		t.Fatal("second create with ZeroSHA should conflict")
+	}
+	// CAS on wrong old value must fail...
+	if err := gitexec.UpdateRef(ctx, src.Dir, "refs/heads/x", src.SHA("c1"), c1, "wrong-old"); err == nil {
+		t.Fatal("stale CAS should fail")
+	}
+	// ...and correct CAS must succeed.
+	if err := gitexec.UpdateRef(ctx, src.Dir, "refs/heads/x", src.SHA("c1"), src.SHA("c2"), "move"); err != nil {
+		t.Fatalf("CAS move: %v", err)
+	}
+	if got := src.Git("rev-parse", "refs/heads/x"); got != src.SHA("c1") {
+		t.Errorf("ref = %s, want %s", got, src.SHA("c1"))
+	}
+
+	// Reflog records the -m messages (the transaction evidence).
+	log := strings.Join(strings.Fields(src.Git("reflog", "show", "refs/heads/x")), " ")
+	if !strings.Contains(log, "move") {
+		t.Errorf("reflog missing update message: %s", log)
+	}
+
+	refs, err := gitexec.ListRefs(ctx, src.Dir, "refs/heads/")
+	if err != nil {
+		t.Fatalf("ListRefs: %v", err)
+	}
+	want := []string{"refs/heads/main", "refs/heads/x"}
+	if len(refs) != len(want) {
+		t.Fatalf("refs = %v, want %v", refs, want)
+	}
+	for i := range want {
+		if refs[i] != want[i] {
+			t.Errorf("refs[%d] = %q, want %q", i, refs[i], want[i])
+		}
+	}
+
+	if err := gitexec.DeleteRef(ctx, src.Dir, "refs/heads/x"); err != nil {
+		t.Fatalf("DeleteRef: %v", err)
+	}
+	if refs, _ := gitexec.ListRefs(ctx, src.Dir, "refs/heads/x"); len(refs) != 0 {
+		t.Errorf("deleted ref still listed: %v", refs)
+	}
+}
+
+func TestGitDirAndHashObject(t *testing.T) {
+	ctx := context.Background()
+	src := testrepo.New(t)
+
+	gd, err := gitexec.GitDir(ctx, src.Dir)
+	if err != nil {
+		t.Fatalf("GitDir: %v", err)
+	}
+	if fi, statErr := os.Stat(filepath.Join(gd, "HEAD")); statErr != nil || fi.IsDir() {
+		t.Errorf("git dir %q lacks HEAD: %v", gd, statErr)
+	}
+
+	blob := "tag payload\n"
+	sha, err := gitexec.HashObject(ctx, src.Dir, "blob", blob)
+	if err != nil {
+		t.Fatalf("HashObject: %v", err)
+	}
+	// -p strips the trailing newline; compare content via hash-object.
+	want, err := gitexec.HashObject(ctx, src.Dir, "blob", blob)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sha != want {
+		t.Errorf("stored %s, re-hashing gives %s", sha, want)
+	}
+}
+
+func gitOutIn(t *testing.T, repo string, args ...string) string {
+	t.Helper()
+	out, err := exec.Command("git", append([]string{"-C", repo}, args...)...).CombinedOutput()
+	if err != nil {
+		t.Fatalf("git %v: %v\n%s", args, err, out)
+	}
+	return strings.TrimSpace(string(out))
+}

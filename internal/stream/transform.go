@@ -114,20 +114,18 @@ func (rw *Rewriter) Run(r io.Reader, w io.Writer) error {
 // writeIdent replaces an author/committer line with the planned identity,
 // or writes the original line back when the plan leaves that field alone.
 func (rw *Rewriter) writeIdent(ew *Writer, tok Token, cp *plan.CommitPlan) error {
-	changed := false
-	label := plan.ChangeAuthor
 	sig := cp.Author
+	orig := cp.OrigAuthor
 	if tok.Verb == "committer" {
-		label = plan.ChangeCommitter
 		sig = cp.Committer
+		orig = cp.OrigCommitter
 	}
-	for _, c := range cp.Changes {
-		if c == label {
-			changed = true
-			break
-		}
-	}
-	if !changed {
+	// Rewrite whenever the emitted line would differ: identity OR date.
+	// A recipe may change only author-date/committer-date, in which case
+	// neither field label appears in Changes — comparing against the
+	// original identity is what makes those rewrites effective.
+	if sig.Name == orig.Name && sig.Email == orig.Email &&
+		plan.SameWhen(sig.When, orig.When) {
 		return ew.Raw(tok.Raw)
 	}
 	id := Ident{Name: sig.Name, Email: sig.Email, When: sig.When}

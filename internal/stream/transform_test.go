@@ -154,6 +154,49 @@ func TestRewriterTransforms(t *testing.T) {
 	}
 }
 
+func TestRewriterDateOnlyRetimesIdentityLines(t *testing.T) {
+	// The first fixture commit is planned with date-only changes: neither
+	// "author" nor "committer" appears in Changes, but the planned
+	// identity carries a new timestamp. The emitted lines must still be
+	// rewritten — otherwise the commit would import unchanged and the
+	// preview-hash canary would (correctly) fail on the mismatch.
+	planned := []*plan.CommitPlan{
+		{
+			Old:         plumbing.NewHash("2222222222222222222222222222222222222222"),
+			New:         plumbing.NewHash("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+			Kind:        plan.KindModified,
+			Changes:     []string{plan.ChangeAuthDate, plan.ChangeCommDate},
+			Author:      sig("Old", "old@x.io", "2020-01-01T12:00:00+0000"),
+			Committer:   sig("Old", "old@x.io", "2020-01-01T12:00:00+0000"),
+			Message:     "first msg\n",
+			OrigMessage: "first msg\n",
+		},
+	}
+	rw := NewRewriter(planned)
+	var out bytes.Buffer
+	if err := rw.Run(strings.NewReader(fixtureStream), &out); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	got := out.String()
+	// 2020-01-01T12:00:00+0000 == 1577880000 epoch seconds.
+	for _, want := range []string{
+		"author Old <old@x.io> 1577880000 +0000\n",
+		"committer Old <old@x.io> 1577880000 +0000\n",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("output missing %q:\n%s", want, got)
+		}
+	}
+	for _, banned := range []string{
+		"author Old <old@x.io> 1577872800 +0000\n",
+		"committer Old <old@x.io> 1577872800 +0000\n",
+	} {
+		if strings.Contains(got, banned) {
+			t.Errorf("output still contains original %q:\n%s", banned, got)
+		}
+	}
+}
+
 func TestRewriterMarksTable(t *testing.T) {
 	rw := NewRewriter(nil)
 	var out bytes.Buffer

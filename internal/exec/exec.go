@@ -120,3 +120,64 @@ func SupportsSignedCommits() bool {
 	})
 	return signedCommitsKnown
 }
+
+// ZeroSHA is the all-zero object id; update-ref treats it as "ref must
+// not exist". SHA-1 only: apply refuses SHA-256 repositories upstream.
+const ZeroSHA = "0000000000000000000000000000000000000000"
+
+// UpdateRef moves one ref with a compare-and-swap on its current value
+// and a recorded message (§5.2.3). oldVal "" skips the CAS; ZeroSHA
+// asserts the ref does not exist yet. Returns the wrapped git error so
+// callers can distinguish concurrent-modification failures.
+func UpdateRef(ctx context.Context, repo, ref, newVal, oldVal, msg string) error {
+	args := []string{"update-ref", "-m", msg, ref, newVal}
+	if oldVal != "" {
+		args = append(args, oldVal)
+	}
+	return runGit(ctx, repo, nil, nil, args...)
+}
+
+// DeleteRef removes ref.
+func DeleteRef(ctx context.Context, repo, ref string) error {
+	return runGit(ctx, repo, nil, nil, "update-ref", "-d", ref)
+}
+
+// ListRefs returns every existing ref under prefix (a directory such as
+// "refs/heads/"), sorted by name.
+func ListRefs(ctx context.Context, repo, prefix string) ([]string, error) {
+	var out bytes.Buffer
+	err := runGit(ctx, repo, nil, &out,
+		"for-each-ref", "--format=%(refname)", "--sort=refname", prefix)
+	if err != nil {
+		return nil, err
+	}
+	var refs []string
+	for _, line := range strings.Split(out.String(), "\n") {
+		if line = strings.TrimSpace(line); line != "" {
+			refs = append(refs, line)
+		}
+	}
+	return refs, nil
+}
+
+// GitDir reports the repository's absolute .git directory, where the
+// transaction log is recorded.
+func GitDir(ctx context.Context, repo string) (string, error) {
+	var out bytes.Buffer
+	if err := runGit(ctx, repo, nil, &out, "rev-parse", "--absolute-git-dir"); err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(out.String()), nil
+}
+
+// HashObject stores content as an object of the given type and returns
+// its hex id. Used to synthesize rewritten annotated tag objects without
+// creating refs (§5.2.3 keeps ref movement under update-ref).
+func HashObject(ctx context.Context, repo, objType, content string) (string, error) {
+	var out bytes.Buffer
+	if err := runGit(ctx, repo, strings.NewReader(content), &out,
+		"hash-object", "-t", objType, "-w", "--stdin"); err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(out.String()), nil
+}

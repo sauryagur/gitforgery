@@ -111,10 +111,11 @@ func (p *Plan) Counts() Counts {
 	return c
 }
 
-// sameWhen reports whether two signatures carry byte-identical timestamps:
+// SameWhen reports whether two instants carry byte-identical timestamps:
 // same unix second AND same zone offset, which is exactly what the commit
 // serializer writes. Two instants with different offsets therefore count as
-// different, matching preview-hash behaviour.
-func sameWhen(a, b time.Time) bool {
+// different, matching preview-hash behaviour. Exported so the stream
+// transformer can decide whether an identity line must be re-emitted.
+func SameWhen(a, b time.Time) bool {
 	return a.Unix() == b.Unix() && a.Format("-0700") == b.Format("-0700")
 }

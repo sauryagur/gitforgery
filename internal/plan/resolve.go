@@ -155,13 +155,13 @@ func (rs *resolver) commit(c *object.Commit) error {
 	if author.Name != c.Author.Name || author.Email != c.Author.Email {
 		changes = append(changes, ChangeAuthor)
 	}
-	if !sameWhen(author.When, c.Author.When) {
+	if !SameWhen(author.When, c.Author.When) {
 		changes = append(changes, ChangeAuthDate)
 	}
 	if committer.Name != c.Committer.Name || committer.Email != c.Committer.Email {
 		changes = append(changes, ChangeCommitter)
 	}
-	if !sameWhen(committer.When, c.Committer.When) {
+	if !SameWhen(committer.When, c.Committer.When) {
 		changes = append(changes, ChangeCommDate)
 	}
 	if message != c.Message {
