@@ -32,6 +32,7 @@ invalidates them — and rewrites always leave detectable fingerprints
 	root.SetVersionTemplate("gitforgery {{.Version}}\n")
 
 	root.AddCommand(newVersionCmd())
+	root.AddCommand(newApplyCmd())
 
 	return root
 }

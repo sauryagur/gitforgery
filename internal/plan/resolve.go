@@ -179,7 +179,8 @@ func (rs *resolver) commit(c *object.Commit) error {
 
 	cp.Changes = changes
 	cp.OrigAuthor, cp.OrigCommitter = c.Author, c.Committer
-	cp.Author, cp.Committer, cp.Message = author, committer, message
+	cp.Author, cp.Committer = author, committer
+	cp.Message, cp.OrigMessage = message, c.Message
 
 	switch {
 	case len(changes) == 0 && !cascaded:

@@ -58,6 +58,10 @@ type CommitPlan struct {
 	Committer object.Signature
 	// Message is the resolved post-rewrite message.
 	Message string
+	// OrigMessage is the source commit's message, kept so the stream
+	// transformer can decide whether the data block needs replacing
+	// without re-reading the repository.
+	OrigMessage string
 }
 
 // Plan is the full preview of applying a recipe to a repository range.
@@ -70,6 +74,12 @@ type Plan struct {
 	// SelectedRefs lists the refs chosen by the recipe's ref patterns,
 	// sorted by name; fast-export runs against these.
 	SelectedRefs []string
+	// IncludeRevs/ExcludeRevs are the resolved range boundaries as
+	// rev-list arguments (ref names or "HEAD", never raw hashes —
+	// fast-export only labels commit blocks for named revisions).
+	// ExcludeRevs is empty for full-range plans.
+	IncludeRevs []string
+	ExcludeRevs []string
 	// Commits holds every commit in the planned range, oldest first
 	// (topological processing order).
 	Commits []*CommitPlan

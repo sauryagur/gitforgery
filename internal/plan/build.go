@@ -45,11 +45,10 @@ func Build(repoPath string, rec *recipe.Recipe, rangeOverride string) (*Plan, er
 		descSuffix = " (override)"
 	}
 
-	includeTips, excludeTips, desc, err := resolveRange(repo, selected, spec)
+	includeTips, excludeTips, incRev, excRev, desc, err := resolveRange(repo, selected, spec)
 	if err != nil {
 		return nil, err
 	}
-
 	planned, err := collectRange(repo, includeTips, excludeTips)
 	if err != nil {
 		return nil, err
@@ -76,6 +75,8 @@ func Build(repoPath string, rec *recipe.Recipe, rangeOverride string) (*Plan, er
 		RangeDesc:    desc + descSuffix,
 		RangeSpec:    spec,
 		SelectedRefs: refNames(selected),
+		IncludeRevs:  incRev,
+		ExcludeRevs:  excRev,
 	}
 	for _, c := range ordered {
 		p.Commits = append(p.Commits, rs.plans[c.Hash])
@@ -174,14 +175,17 @@ func peelToCommit(repo *git.Repository, h plumbing.Hash) (*object.Commit, error)
 	return nil, fmt.Errorf("tag chain at %s too deep", h)
 }
 
-// resolveRange splits a rev-list style expression into include/exclude tips.
+// resolveRange splits a rev-list style expression into include/exclude
+// tips plus the equivalent rev-list arguments (include/exclude revision
+// expressions, "" normalized to "HEAD"; fast-export only labels commit
+// blocks for named revisions, never raw hashes).
 //
 // Supported forms (§6):
 //
 //	"" | "all"   everything reachable from the recipe's selected refs
 //	"X"          everything reachable from revision X
 //	"A..B"       reachable from B but not from A; an omitted side means HEAD
-func resolveRange(repo *git.Repository, selected []refTip, spec string) (include, exclude []plumbing.Hash, desc string, err error) {
+func resolveRange(repo *git.Repository, selected []refTip, spec string) (include, exclude []plumbing.Hash, incRev, excRev []string, desc string, err error) {
 	switch spec {
 	case "", "all":
 		seen := map[plumbing.Hash]struct{}{}
@@ -189,35 +193,45 @@ func resolveRange(repo *git.Repository, selected []refTip, spec string) (include
 			if _, dup := seen[tip.Hash]; !dup {
 				seen[tip.Hash] = struct{}{}
 				include = append(include, tip.Hash)
+				incRev = append(incRev, tip.Name)
 			}
 		}
 		names := make([]string, len(selected))
 		for i, tip := range selected {
 			names[i] = tip.Name
 		}
-		return include, nil, "all reachable from [" + strings.Join(names, ", ") + "]", nil
+		return include, nil, incRev, nil, "all reachable from [" + strings.Join(names, ", ") + "]", nil
 	}
 
 	if before, after, found := strings.Cut(spec, ".."); found {
 		if strings.Contains(after, "..") {
-			return nil, nil, "", fmt.Errorf("range %q: only one '..' is supported", spec)
+			return nil, nil, nil, nil, "", fmt.Errorf("range %q: only one '..' is supported", spec)
 		}
 		excl, err := resolveOne(repo, before)
 		if err != nil {
-			return nil, nil, "", fmt.Errorf("range %q: %v", spec, err)
+			return nil, nil, nil, nil, "", fmt.Errorf("range %q: %v", spec, err)
 		}
 		incl, err := resolveOne(repo, after)
 		if err != nil {
-			return nil, nil, "", fmt.Errorf("range %q: %v", spec, err)
+			return nil, nil, nil, nil, "", fmt.Errorf("range %q: %v", spec, err)
 		}
-		return []plumbing.Hash{*incl}, []plumbing.Hash{*excl}, spec, nil
+		return []plumbing.Hash{*incl}, []plumbing.Hash{*excl},
+			[]string{orHead(after)}, []string{orHead(before)}, spec, nil
 	}
 
 	tip, err := resolveOne(repo, spec)
 	if err != nil {
-		return nil, nil, "", fmt.Errorf("range %q: %v", spec, err)
+		return nil, nil, nil, nil, "", fmt.Errorf("range %q: %v", spec, err)
 	}
-	return []plumbing.Hash{*tip}, nil, spec, nil
+	return []plumbing.Hash{*tip}, nil, []string{orHead(spec)}, nil, spec, nil
+}
+
+// orHead normalizes an empty range side to HEAD (§6).
+func orHead(rev string) string {
+	if rev == "" {
+		return "HEAD"
+	}
+	return rev
 }
 
 // resolveOne resolves a single revision to its peeled commit. An empty
