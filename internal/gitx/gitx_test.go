@@ -100,19 +100,6 @@ func TestMatchRefPattern(t *testing.T) {
 	}
 }
 
-// runGit executes git in dir and returns trimmed stdout, failing the test on error.
-func runGit(t *testing.T, dir string, args ...string) string {
-	t.Helper()
-	cmd := exec.Command("git", append([]string{"-C", dir}, args...)...)
-	var out, errOut bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &errOut
-	if err := cmd.Run(); err != nil {
-		t.Fatalf("git %s: %v: %s", strings.Join(args, " "), err, errOut.String())
-	}
-	return strings.TrimSpace(out.String())
-}
-
 // gitHashObject feeds raw object bytes to `git hash-object` and returns the
 // hex hash git itself computes. This makes real git the source of truth for
 // preview-hash expectations instead of go-git's own encoder.

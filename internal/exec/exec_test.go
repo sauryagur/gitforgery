@@ -15,9 +15,11 @@ import (
 
 func TestFastExportImportRoundTrip(t *testing.T) {
 	src := testrepo.New(t)
-	c1 := src.Commit(testrepo.Commit{Label: "c1", Message: "one\n",
+	c1 := src.Commit(testrepo.Commit{
+		Label: "c1", Message: "one\n",
 		Name: "Ada", Email: "ada@example.com", Date: "2020-01-01T10:00:00+00:00",
-		Files: map[string]string{"a.txt": "one\n"}})
+		Files: map[string]string{"a.txt": "one\n"},
+	})
 	src.Commit(testrepo.Commit{Label: "c2", Message: "two\n",
 		Name: "Bob", Email: "bob@example.com", Date: "2021-01-01T10:00:00+00:00",
 		Files: map[string]string{"b.txt": "two\n"}})
@@ -222,13 +224,4 @@ func TestGitDirAndHashObject(t *testing.T) {
 	if sha != want {
 		t.Errorf("stored %s, re-hashing gives %s", sha, want)
 	}
-}
-
-func gitOutIn(t *testing.T, repo string, args ...string) string {
-	t.Helper()
-	out, err := exec.Command("git", append([]string{"-C", repo}, args...)...).CombinedOutput()
-	if err != nil {
-		t.Fatalf("git %v: %v\n%s", args, err, out)
-	}
-	return strings.TrimSpace(string(out))
 }

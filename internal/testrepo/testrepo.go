@@ -83,8 +83,8 @@ func (r *Repo) Commit(c Commit) string {
 	}
 	for _, p := range parents {
 		sha := p
-		switch {
-		case sha == "@last":
+		switch p {
+		case "@last":
 			sha = r.last
 		default:
 			if resolved, ok := r.shas[p]; ok {
@@ -187,7 +187,7 @@ func (r *Repo) Checksum() string {
 		if err != nil {
 			return err
 		}
-		h.WriteString(fmt.Sprintf("%x", data))
+		_, _ = fmt.Fprintf(&h, "%x", data)
 		h.WriteByte(0)
 		return nil
 	})

@@ -49,21 +49,25 @@ func gitOut(t *testing.T, repo string, args ...string) string {
 
 // twoCommitFixture builds the standard source: two authors, two dates,
 // one branch.
-func twoCommitFixture(t *testing.T) (*testrepo.Repo, string, string) {
+func twoCommitFixture(t *testing.T) (*testrepo.Repo, string) {
 	t.Helper()
 	src := testrepo.New(t)
-	c1 := src.Commit(testrepo.Commit{Label: "c1", Message: "first subject\n",
+	src.Commit(testrepo.Commit{
+		Label: "c1", Message: "first subject\n",
 		Name: "Old Author", Email: "old@x.io", Date: "2020-01-01T10:00:00+00:00",
-		Files: map[string]string{"a.txt": "alpha\n"}})
-	c2 := src.Commit(testrepo.Commit{Label: "c2", Message: "second subject\n",
+		Files: map[string]string{"a.txt": "alpha\n"},
+	})
+	c2 := src.Commit(testrepo.Commit{
+		Label: "c2", Message: "second subject\n",
 		Name: "Bob Builder", Email: "bob@x.io", Date: "2021-02-02T11:00:00+00:00",
-		Files: map[string]string{"b.txt": "beta\n"}})
+		Files: map[string]string{"b.txt": "beta\n"},
+	})
 	src.Branch("main", "c2")
-	return src, c1, c2
+	return src, c2
 }
 
 func TestApplyToNewRepoEndToEnd(t *testing.T) {
-	src, _, c2 := twoCommitFixture(t)
+	src, c2 := twoCommitFixture(t)
 	target := filepath.Join(t.TempDir(), "out.git")
 
 	rep, err := apply.Run(context.Background(), apply.Options{
@@ -121,7 +125,7 @@ func TestApplyToNewRepoEndToEnd(t *testing.T) {
 }
 
 func TestApplyOptionValidation(t *testing.T) {
-	src, _, _ := twoCommitFixture(t)
+	src, _ := twoCommitFixture(t)
 	existing := t.TempDir()
 
 	tests := []struct {
@@ -168,7 +172,7 @@ func TestApplyOptionValidation(t *testing.T) {
 }
 
 func TestNoopRecipeLeavesTipsIdentical(t *testing.T) {
-	src, _, c2 := twoCommitFixture(t)
+	src, c2 := twoCommitFixture(t)
 	target := filepath.Join(t.TempDir(), "out.git")
 
 	noOp := `

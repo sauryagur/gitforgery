@@ -38,7 +38,8 @@ type whenYAML struct {
 	Branch         string `yaml:"branch"`
 }
 
-func (w whenYAML) toWhen() When {
+// FromYAML converts a decoded when block into its compiled form.
+func FromYAML(w whenYAML) When {
 	return When{
 		SHA:            w.SHA,
 		Author:         w.Author,
@@ -107,7 +108,7 @@ func Parse(data []byte) (*Recipe, error) {
 func compileRule(ry ruleYAML, i int) (*Rule, error) {
 	at := func(field string) string { return fmt.Sprintf("match[%d].%s", i, field) }
 
-	rule := &Rule{When: ry.When.toWhen()}
+	rule := &Rule{When: FromYAML(ry.When)}
 	for _, c := range []struct {
 		field string
 		raw   string

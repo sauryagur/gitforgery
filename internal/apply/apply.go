@@ -194,7 +194,7 @@ func tempMarks() (exportPath, importPath string, err error) {
 	}
 	importPath, err = newMarkFile("gitforgery-import-marks-")
 	if err != nil {
-		os.Remove(exportPath)
+		_ = os.Remove(exportPath)
 		return "", "", err
 	}
 	return exportPath, importPath, nil

@@ -71,15 +71,21 @@ func newBaseFixture(t *testing.T) *baseFixture {
 		c2T:   time.Date(2021, 6, 15, 12, 30, 0, 0, time.FixedZone("", 2*3600)),
 		c3T:   time.Date(2022, 11, 5, 3, 16, 0, 0, time.FixedZone("", -7*3600)),
 	}
-	f.shas["c1"] = f.r.Commit(testrepo.Commit{Label: "c1", Message: c1Msg,
+	f.shas["c1"] = f.r.Commit(testrepo.Commit{
+		Label: "c1", Message: c1Msg,
 		Name: "Ada Lovelace", Email: "ada@example.com",
-		Date: "2020-01-01T10:00:00+00:00", Files: map[string]string{"a.txt": "one\n"}})
-	f.shas["c2"] = f.r.Commit(testrepo.Commit{Label: "c2", Message: c2Msg,
+		Date: "2020-01-01T10:00:00+00:00", Files: map[string]string{"a.txt": "one\n"},
+	})
+	f.shas["c2"] = f.r.Commit(testrepo.Commit{
+		Label: "c2", Message: c2Msg,
 		Name: "Bob", Email: "bob@oldcorp.com",
-		Date: "2021-06-15T12:30:00+02:00", Files: map[string]string{"b.txt": "two\n"}})
-	f.shas["c3"] = f.r.Commit(testrepo.Commit{Label: "c3", Message: c3Msg,
+		Date: "2021-06-15T12:30:00+02:00", Files: map[string]string{"b.txt": "two\n"},
+	})
+	f.shas["c3"] = f.r.Commit(testrepo.Commit{
+		Label: "c3", Message: c3Msg,
 		Name: "Cara", Email: "cara@example.net",
-		Date: "2022-11-05T03:16:00-07:00", Files: map[string]string{"c.txt": "three\n"}})
+		Date: "2022-11-05T03:16:00-07:00", Files: map[string]string{"c.txt": "three\n"},
+	})
 	for _, l := range []string{"c1", "c2", "c3"} {
 		f.trees[l] = f.r.Git("rev-parse", f.shas[l]+"^{tree}")
 	}

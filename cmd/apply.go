@@ -47,16 +47,16 @@ explicitly opted-in mode. Mutating runs require --yes.`,
 			})
 			if err != nil {
 				if errors.Is(err, apply.ErrConfirmRequired) {
-					return fmt.Errorf("%w\nRun 'gitforgery plan' first, then add --yes.", err)
+					return fmt.Errorf("%w: run 'gitforgery plan' first, then add --yes", err)
 				}
 				return err
 			}
 			out := cmd.OutOrStdout()
-			fmt.Fprintf(out, "applied %s\n", rep.Range)
-			fmt.Fprintf(out, "source: %s -> target: %s\n", rep.Source, rep.Target)
-			fmt.Fprintf(out, "commits: %d planned, %d modified, %d cascaded, %d unchanged\n",
+			_, _ = fmt.Fprintf(out, "applied %s\n", rep.Range)
+			_, _ = fmt.Fprintf(out, "source: %s -> target: %s\n", rep.Source, rep.Target)
+			_, _ = fmt.Fprintf(out, "commits: %d planned, %d modified, %d cascaded, %d unchanged\n",
 				rep.Counts.Total, rep.Counts.Modified, rep.Counts.Cascade, rep.Counts.Total-rep.Counts.Changed)
-			fmt.Fprintf(out, "verified: fsck --full clean, tree objects untouched\n")
+			_, _ = fmt.Fprintf(out, "verified: fsck --full clean, tree objects untouched\n")
 			return nil
 		},
 	}
